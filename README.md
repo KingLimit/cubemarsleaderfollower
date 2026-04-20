@@ -1,8 +1,8 @@
-# CubeMars Motor Position Control
+# CubeMars Motor Leader Follower Control
 
-This project uses an STM32 to control a CubeMars motor over CAN. The goal was to get smooth position control where the motor can be moved by hand and will return to a set position without jitter or instability.
+This project uses an STM32 to control multiple CubeMars motors over CAN in a leader–follower setup. One motor is moved by hand (leader), and another motor follows its motion in real time.
 
-The control is a simple PD loop with some filtering on velocity and reduced stiffness near the target to keep it from twitching. It’s meant to feel responsive but not rigid.
+The goal is to get smooth, responsive motion where the follower tracks the leader without jitter, overshoot, or instability. It’s designed to feel natural rather than rigid.
 
 ## Hardware
 - STM32 Nucleo-F446RE  
@@ -13,8 +13,15 @@ The control is a simple PD loop with some filtering on velocity and reduced stif
 ## Software
 - STM32CubeMX used to create and edit initial .ioc file and generate project
 - STM32CubeIDE used to edit main.c and flash to board
+- Python script used to log data for data analysis and plots
 
 ## Notes
 CAN communication is handled through the Waveshare shield, with PB8/PB9 used for RX/TX. Basic filtering is applied to accept all messages.
 
-Gains (Kp, Kd) and filtering parameters can be adjusted depending on the setup and how stiff or compliant you want the motor to feel.
+The leader motor is passive and can be moved freely by hand, while the follower motor tracks its position using a PD controller.
+
+An offset is applied when assigning a follower so it does not jump to the leader’s position immediately. This allows smooth engagement at any position.
+
+A small amount of smoothing is applied to the follower command to reduce twitching and aggressive corrections.
+
+Gains (Kp, Kd) and smoothing can be adjusted depending on the setup and how stiff or compliant you want the follower to feel.
