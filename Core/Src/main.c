@@ -47,11 +47,11 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
-#define NUM_MOTORS 2
+#define NUM_MOTORS 6
 #define NO_LEADER 255
 
 // |Motor IDs|
-uint8_t motor_ids[NUM_MOTORS] = {1, 2};
+uint8_t motor_ids[NUM_MOTORS] = {1, 2, 3, 4, 5, 6};
 
 // |Feedback from motors|
 float pos[NUM_MOTORS] = {0}; // motor position in radians
@@ -59,7 +59,7 @@ float vel[NUM_MOTORS] = {0}; // motor velocity in rad/s
 
 // |Follow Direction|
 // Direction for each motor: +1 = same, -1 = inverted
-int8_t follow_direction[NUM_MOTORS] = {1, 1};
+int8_t follow_direction[NUM_MOTORS] = {1, 1, 1, 1, 1, 1};
 
 // |Leader/Follower Mapping|
 // If leader_for_motor[i] = j → motor i follows motor j
@@ -71,8 +71,10 @@ float follow_offset[NUM_MOTORS];
 
 // |PD Gains for Followers|
 // Leader should be set to passive
-float Kp_arr[NUM_MOTORS] = {0.0f, 5.0f};
-float Kd_arr[NUM_MOTORS] = {0.0f, 0.5f};
+//float Kp_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 12.0f, 5.0f, 5.0f};
+//float Kd_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.5f};
+float Kp_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 48.0f, 24.0f, 24.0f};
+float Kd_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 2.0f, 2.0f, 2.0f};
 
 // |Smoothed Command Position|
 float cmd_pos_slow[NUM_MOTORS];
@@ -266,9 +268,14 @@ int main(void)
   }
 
   // |Enable Motors|
-  for (int i = 0; i < NUM_MOTORS; i++)
+  for (int k = 0; k < 5; k++)
   {
-      enable_motor(motor_ids[i]);
+	  for (int i = 0; i < NUM_MOTORS; i++)
+	  {
+	      while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) == 0);
+			  enable_motor(motor_ids[i]);
+		  HAL_Delay(5);
+	  }
   }
 
   /* USER CODE END 2 */
@@ -298,9 +305,15 @@ int main(void)
       }
 
       // Check for Valid Data
-      if (!pos_valid[0] || !pos_valid[1])
+      uint8_t all_valid = 1;
+
+      for (int i = 0; i < NUM_MOTORS; i++)
       {
-          continue;
+          if (!pos_valid[i])
+          {
+              all_valid = 0;
+              break;
+          }
       }
 
       // Data Output (Run logger.py)
@@ -320,9 +333,15 @@ int main(void)
 
       // |Set Follower Mapping|
       static uint8_t mapping_set = 0;
-      if (!mapping_set)
+
+      if (!mapping_set && all_valid)
       {
-          set_follower(2, 1, -1);
+          HAL_Delay(500);  // let motors settle
+
+          set_follower(6, 1, -1);
+          set_follower(4, 2, -1);
+          set_follower(5, 3, -1);
+
           mapping_set = 1;
       }
 
@@ -349,7 +368,8 @@ int main(void)
 
                   // Light smoothing to prevent twitching/aggressive response
                   float alpha = 0.2f;
-                  cmd_pos_slow[i] = alpha * target + (1.0f - alpha) * cmd_pos_slow[i];
+                  //cmd_pos_slow[i] = alpha * target + (1.0f - alpha) * cmd_pos_slow[i];
+                  cmd_pos_slow[i] = target;
 
                   // Send PD position command
                   pack_cmd(cmd_pos_slow[i], 0.0f, kp, kd, 0.0f);
@@ -361,10 +381,11 @@ int main(void)
               }
 
               // Send Command
-              if (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) > 0)
+              while (HAL_CAN_GetTxMailboxesFreeLevel(&hcan1) == 0)
               {
-                  send_cmd(motor_ids[i]);
+                  // Wait for free mailbox
               }
+              send_cmd(motor_ids[i]);
           }
       }
   }
