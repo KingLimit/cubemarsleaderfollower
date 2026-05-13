@@ -71,8 +71,6 @@ float follow_offset[NUM_MOTORS];
 
 // |PD Gains for Followers|
 // Leader should be set to passive
-//float Kp_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 12.0f, 5.0f, 5.0f};
-//float Kd_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 1.0f, 0.5f, 0.5f};
 float Kp_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 48.0f, 24.0f, 24.0f};
 float Kd_arr[NUM_MOTORS] = {0.0f, 0.0f, 0.0f, 2.0f, 2.0f, 2.0f};
 
@@ -368,6 +366,7 @@ int main(void)
 
                   // Light smoothing to prevent twitching/aggressive response
                   float alpha = 0.2f;
+				  //cmd_pos_slow deprecated to prevent lag, not fully removed because I can no longer test without it
                   //cmd_pos_slow[i] = alpha * target + (1.0f - alpha) * cmd_pos_slow[i];
                   cmd_pos_slow[i] = target;
 
